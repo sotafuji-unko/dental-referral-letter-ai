@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>紹介状作成</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Hiragino Sans', 'Yu Gothic', sans-serif; background: #f5f5f5; color: #333; }
+
+    .wrap { max-width: 700px; margin: 0 auto; padding: 24px 16px 48px; }
+
+    .page-title {
+      font-size: 20px; font-weight: 600; color: #1a1a1a;
+      margin-bottom: 4px; display: flex; align-items: center; gap: 8px;
+    }
+    .page-title .icon { color: #1a73e8; font-size: 22px; }
+    .sub { font-size: 13px; color: #888; margin-bottom: 20px; }
+
+    /* カード */
+    .card {
+      background: #fff; border-radius: 12px; padding: 20px;
+      margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+    }
+    .section-label {
+      font-size: 11px; font-weight: 600; color: #888;
+      text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 14px;
+    }
+    .field { margin-bottom: 14px; }
+    .field:last-child { margin-bottom: 0; }
+    .field label { display: block; font-size: 13px; color: #666; margin-bottom: 5px; }
+
+    textarea {
+      width: 100%; padding: 10px 14px;
+      border: 1px solid #ddd; border-radius: 8px;
+      font-size: 14px; font-family: inherit; color: #333;
+      resize: vertical; min-height: 130px; line-height: 1.7;
+      transition: border-color 0.15s;
+    }
+    textarea:focus { outline: none; border-color: #1a73e8; }
+    textarea::placeholder { color: #bbb; }
+
+    .char-count { font-size: 11px; color: #aaa; text-align: right; margin-top: 4px; }
+
+    /* トグル */
+    .toggle-row {
+      display: flex; align-items: center; justify-content: space-between; padding: 2px 0;
+    }
+    .toggle-info .toggle-label { font-size: 14px; color: #333; font-weight: 500; }
+    .toggle-info .toggle-desc  { font-size: 12px; color: #888; margin-top: 2px; }
+
+    .toggle { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
+    .toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+    .slider {
+      position: absolute; inset: 0; background: #ccc;
+      border-radius: 12px; cursor: pointer; transition: background 0.2s;
+    }
+    .slider::before {
+      content: ''; position: absolute;
+      width: 18px; height: 18px; left: 3px; top: 3px;
+      background: white; border-radius: 50%; transition: transform 0.2s;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+    .toggle input:checked + .slider { background: #1a73e8; }
+    .toggle input:checked + .slider::before { transform: translateX(20px); }
+
+    /* 生成ボタン */
+    .btn-primary {
+      width: 100%; padding: 13px; font-size: 15px; font-weight: 600;
+      background: #1a73e8; color: #fff; border: none; border-radius: 10px;
+      cursor: pointer; transition: opacity 0.15s;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .btn-primary:hover:not(:disabled) { opacity: 0.88; }
+    .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    /* エラー */
+    .error-box {
+      display: none; background: #fce8e6; color: #c5221f;
+      border-radius: 8px; padding: 10px 14px; font-size: 13px; margin-top: 10px;
+    }
+
+    /* ローディング */
+    .loading { display: none; text-align: center; padding: 36px 0; }
+    .spinner {
+      width: 34px; height: 34px; margin: 0 auto 14px;
+      border: 3px solid #e0e0e0; border-top-color: #1a73e8;
+      border-radius: 50%; animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-text { font-size: 14px; color: #888; }
+    .loading-steps { font-size: 12px; color: #bbb; margin-top: 6px; }
+
+    /* プレビューエリア */
+    .preview-area { display: none; margin-top: 20px; }
+    .preview-card {
+      background: #fff; border-radius: 12px; padding: 20px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+    }
+    .preview-header {
+      display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;
+    }
+    .preview-title-label { font-size: 13px; color: #888; font-weight: 600; }
+    .review-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-size: 12px; background: #fff8e1; color: #f57c00;
+      border-radius: 20px; padding: 4px 10px;
+    }
+
+    /* プレビュー本文 */
+    .preview-content {
+      background: #f9f9fb; border-radius: 8px; border: 1px solid #ececec;
+      padding: 16px 20px; font-size: 13px; line-height: 2.0;
+      color: #222; white-space: pre-wrap; min-height: 180px;
+      margin-bottom: 16px; font-family: 'Hiragino Mincho ProN', 'Yu Mincho', serif;
+    }
+
+    /* アクションボタン群 */
+    .btn-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+    .btn-action {
+      padding: 10px 8px; font-size: 13px; font-weight: 600;
+      border-radius: 8px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+      border: 1px solid #ddd; background: #fff; color: #333;
+      transition: background 0.15s, opacity 0.15s;
+    }
+    .btn-action:hover { background: #f5f5f5; }
+    .btn-action.green  { background: #34a853; color: #fff; border-color: #34a853; }
+    .btn-action.green:hover  { opacity: 0.88; background: #34a853; }
+    .btn-action.blue   { background: #1a73e8; color: #fff; border-color: #1a73e8; }
+    .btn-action.blue:hover   { opacity: 0.88; background: #1a73e8; }
+
+    .footer-note { font-size: 11px; color: #aaa; margin-top: 12px; text-align: center; }
+
+    /* 成功バナー */
+    .success-banner {
+      display: none; background: #e6f4ea; color: #137333;
+      border-radius: 8px; padding: 10px 14px; font-size: 13px;
+      margin-bottom: 14px; display: none; align-items: center; gap: 8px;
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1 class="page-title">
+    <span class="icon">📄</span>紹介状作成
+  </h1>
+  <p class="sub">音声メモを貼り付けて、AIが自動で紹介状を生成します</p>
+
+  <!-- 音声メモ入力 -->
+  <div class="card">
+    <div class="section-label">音声メモ</div>
+    <div class="field">
+      <label>音声メモ・テキスト入力</label>
+      <textarea
+        id="voiceMemo"
+        placeholder="ここに音声メモを貼り付けてください。&#10;患者名、紹介先、紹介目的、特記事項などを含むテキストを入力してください。"
+        oninput="updateCharCount()"
+      ></textarea>
+      <div class="char-count"><span id="charCount">0</span> 文字</div>
+    </div>
+  </div>
+
+  <!-- オプション -->
+  <div class="card">
+    <div class="section-label">オプション設定</div>
+    <div class="toggle-row">
+      <div class="toggle-info">
+        <div class="toggle-label">説明用画像を挿入する</div>
+        <div class="toggle-desc">紹介状に歯科説明画像を追加します</div>
+      </div>
+      <label class="toggle" aria-label="説明用画像を挿入する">
+        <input type="checkbox" id="staffToggle">
+        <span class="slider"></span>
+      </label>
+    </div>
+  </div>
+
+  <!-- 生成ボタン -->
+  <button class="btn-primary" id="genBtn" onclick="handleGenerate()">
+    ✨ 紹介状を生成する
+  </button>
+  <div class="error-box" id="errorBox"></div>
+
+  <!-- ローディング -->
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <p class="loading-text">AIが紹介状を生成中です...</p>
+    <p class="loading-steps" id="loadingStep">音声メモを解析しています</p>
+  </div>
+
+  <!-- プレビュー -->
+  <div class="preview-area" id="previewArea">
+    <div class="preview-card">
+
+      <div class="success-banner" id="successBanner">
+        ✅ 紹介状を作成しました。内容をご確認ください。
+      </div>
+
+      <div class="preview-header">
+        <span class="preview-title-label">生成結果プレビュー</span>
+        <span class="review-badge">⚠️ 医師確認が必要です</span>
+      </div>
+
+      <div class="preview-content" id="previewContent"></div>
+
+      <div class="btn-row">
+        <button class="btn-action" id="regenBtn" onclick="handleRegenerate()">
+          🔄 再生成
+        </button>
+        <button class="btn-action blue" id="openDocBtn" onclick="handleOpenDoc()">
+          📂 Docsを開く
+        </button>
+        <button class="btn-action green" id="printBtn" onclick="handlePrint()">
+          🖨️ 印刷 / 保存
+        </button>
+      </div>
+
+      <p class="footer-note">※ この紹介状は歯科医師の確認後にご使用ください</p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // ドキュメントURLを保持
+  let currentDocUrl = null;
+
+  // 文字数カウント
+  function updateCharCount() {
+    const len = document.getElementById('voiceMemo').value.length;
+    document.getElementById('charCount').textContent = len;
+  }
+
+  // ローディングのステップテキストをアニメーション
+  const loadingMessages = [
+    '音声メモを解析しています',
+    '紹介状の構成を組み立てています',
+    '文章を整えています',
+    'Google Docsに書き込んでいます'
+  ];
+  let loadingTimer = null;
+
+  function startLoadingAnimation() {
+    let idx = 0;
+    document.getElementById('loadingStep').textContent = loadingMessages[0];
+    loadingTimer = setInterval(function() {
+      idx = (idx + 1) % loadingMessages.length;
+      document.getElementById('loadingStep').textContent = loadingMessages[idx];
+    }, 2200);
+  }
+
+  function stopLoadingAnimation() {
+    if (loadingTimer) {
+      clearInterval(loadingTimer);
+      loadingTimer = null;
+    }
+  }
+
+  // 生成処理
+  function handleGenerate() {
+    const memo = document.getElementById('voiceMemo').value.trim();
+    const errBox = document.getElementById('errorBox');
+    errBox.style.display = 'none';
+
+    if (!memo) {
+      errBox.textContent = '音声メモを入力してください。';
+      errBox.style.display = 'block';
+      return;
+    }
+
+    const isStaffYes = document.getElementById('staffToggle').checked;
+
+    // UI状態をローディングに切り替え
+    setLoadingState(true);
+
+    // GASサーバー側の関数を呼び出す
+    google.script.run
+      .withSuccessHandler(function(res) {
+        setLoadingState(false);
+        if (res.ok) {
+          currentDocUrl = res.docUrl;
+          showPreview(res.previewText);
+        } else {
+          showError(res.error || '不明なエラーが発生しました。');
+        }
+      })
+      .withFailureHandler(function(err) {
+        setLoadingState(false);
+        showError('通信エラー: ' + (err.message || err));
+      })
+      .createReferralFromWeb(memo, isStaffYes);
+  }
+
+  function handleRegenerate() {
+    handleGenerate();
+  }
+
+  function handleOpenDoc() {
+    if (currentDocUrl) {
+      window.open(currentDocUrl, '_blank');
+    } else {
+      alert('先に紹介状を生成してください。');
+    }
+  }
+
+  function handlePrint() {
+    if (!currentDocUrl) {
+      alert('先に紹介状を生成してください。');
+      return;
+    }
+    // Google Docs の印刷URLに変換して開く
+    // 例: /document/d/DOC_ID/edit → /document/d/DOC_ID/export?format=pdf
+    const printUrl = currentDocUrl.replace('/edit', '/export?format=pdf');
+    window.open(printUrl, '_blank');
+  }
+
+  // プレビュー表示
+  function showPreview(text) {
+    document.getElementById('previewContent').textContent = text;
+    document.getElementById('previewArea').style.display = 'block';
+
+    const banner = document.getElementById('successBanner');
+    banner.style.display = 'flex';
+    setTimeout(function() { banner.style.display = 'none'; }, 4000);
+
+    // スクロール
+    document.getElementById('previewArea').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function showError(msg) {
+    const errBox = document.getElementById('errorBox');
+    errBox.textContent = msg;
+    errBox.style.display = 'block';
+  }
+
+  function setLoadingState(isLoading) {
+    const btn = document.getElementById('genBtn');
+    const loading = document.getElementById('loading');
+    const previewArea = document.getElementById('previewArea');
+
+    if (isLoading) {
+      btn.disabled = true;
+      btn.textContent = '生成中...';
+      loading.style.display = 'block';
+      previewArea.style.display = 'none';
+      startLoadingAnimation();
+    } else {
+      btn.disabled = false;
+      btn.textContent = '✨ 紹介状を生成する';
+      loading.style.display = 'none';
+      stopLoadingAnimation();
+    }
+  }
+</script>
+</body>
+</html>
